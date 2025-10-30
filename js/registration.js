@@ -3,6 +3,8 @@
 // ============================================
 
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("[v0] Registration page loaded")
+
   const registrationForm = document.getElementById("registrationForm")
   const firstNameInput = document.getElementById("firstName")
   const lastNameInput = document.getElementById("lastName")
@@ -12,6 +14,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const confirmPasswordInput = document.getElementById("confirmPassword")
   const toggleRegPassword = document.getElementById("toggleRegPassword")
   const toggleConfirmPassword = document.getElementById("toggleConfirmPassword")
+
+  if (!registrationForm) {
+    console.error("[v0] Registration form not found!")
+    return
+  }
+  console.log("[v0] Registration form found")
 
   if (toggleRegPassword) {
     toggleRegPassword.addEventListener("click", (e) => {
@@ -227,10 +235,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (registrationForm) {
-    registrationForm.addEventListener("submit", (e) => {
+    registrationForm.addEventListener("submit", async (e) => {
       e.preventDefault()
+      console.log("[v0] Form submit button clicked")
 
       let isValid = true
+      const submitBtn = registrationForm.querySelector('button[type="submit"]')
+      const originalText = submitBtn.textContent
+
+      document.querySelectorAll(".error-message").forEach((el) => el.classList.remove("show"))
+      document.querySelectorAll("input").forEach((el) => el.classList.remove("error"))
 
       // Validate first name
       if (!firstNameInput.value.trim()) {
@@ -330,10 +344,93 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (isValid) {
-        console.log("[v0] Registration successful with email:", emailInput.value)
-        alert("Registration successful!")
-        // Redirect or handle registration here
+        try {
+          submitBtn.textContent = "Creating Account..."
+          submitBtn.disabled = true
+
+          const formData = new FormData(registrationForm)
+
+          console.log("[v0] Sending registration data to server...")
+          const response = await fetch("register-handler.php", {
+            method: "POST",
+            body: formData,
+          })
+
+          console.log("[v0] Response status:", response.status)
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const responseText = await response.text()
+          console.log("[v0] Raw response:", responseText)
+
+          const data = JSON.parse(responseText)
+          console.log("[v0] Parsed response:", data)
+
+          if (data.success) {
+            showNotification(
+              "✓ Registration Successful!",
+              "Your account has been created. Redirecting to login...",
+              "success",
+            )
+
+            setTimeout(() => {
+              window.location.href = data.redirect
+            }, 2000)
+          } else {
+            showNotification("✗ Registration Failed", data.message || "Please check the errors below.", "error")
+
+            // Display errors from backend
+            if (data.errors) {
+              for (const [field, message] of Object.entries(data.errors)) {
+                const errorElement = document.getElementById(field + "Error")
+                if (errorElement) {
+                  errorElement.textContent = message
+                  errorElement.classList.add("show")
+                  const inputElement = document.getElementById(field)
+                  if (inputElement) {
+                    inputElement.classList.add("error")
+                  }
+                }
+              }
+            }
+
+            // Reset button
+            submitBtn.textContent = originalText
+            submitBtn.disabled = false
+          }
+        } catch (error) {
+          console.error("[v0] Error occurred:", error)
+          showNotification("✗ Error", "An error occurred: " + error.message, "error")
+          submitBtn.textContent = originalText
+          submitBtn.disabled = false
+        }
       }
     })
   }
 })
+
+function showNotification(title, message, type) {
+  // Remove existing notification if any
+  const existingNotification = document.querySelector(".notification")
+  if (existingNotification) {
+    existingNotification.remove()
+  }
+
+  const notification = document.createElement("div")
+  notification.className = `notification notification-${type}`
+  notification.innerHTML = `
+    <div class="notification-content">
+      <h4>${title}</h4>
+      <p>${message}</p>
+    </div>
+  `
+
+  document.body.appendChild(notification)
+
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    notification.remove()
+  }, 5000)
+}
