@@ -271,6 +271,8 @@ function initializeSidebar() {
       }
     })
   })
+
+  initializeProfileTabs()
 }
 
 function showSection(sectionName) {
@@ -893,6 +895,11 @@ function filterAlertsByType(type) {
   })
 }
 
+function filterTaskHistory(date) {
+  // Implement filterTaskHistory logic here
+  console.log("Filtering task history by date:", date)
+}
+
 function updateBinStatus() {
   const binId = document.getElementById("binIdInput").value
   const status = document.getElementById("statusSelect").value
@@ -922,8 +929,10 @@ function openStatusModal(binId) {
   modal.show()
 }
 
+window.openStatusModal = openStatusModal
+
 function handleAlert(binId) {
-  const alert = alerts.find(a => a.binId === binId)
+  const alert = alerts.find((a) => a.binId === binId)
   if (!alert) {
     alert("Alert not found")
     return
@@ -937,7 +946,9 @@ function handleAlert(binId) {
   modal.show()
 }
 
-window.submitHandleAlert = function() {
+window.handleAlert = handleAlert
+
+window.submitHandleAlert = () => {
   const binId = document.getElementById("handleAlertBinId").value
   const action = document.getElementById("handleAction").value
   const notes = document.getElementById("handleNotes").value
@@ -949,7 +960,7 @@ window.submitHandleAlert = function() {
   }
 
   // Update alert status
-  const alertIndex = alerts.findIndex(a => a.binId === binId)
+  const alertIndex = alerts.findIndex((a) => a.binId === binId)
   if (alertIndex > -1) {
     alerts[alertIndex].status = "read"
   }
@@ -964,6 +975,36 @@ window.submitHandleAlert = function() {
 
   alert("Alert handled successfully!")
   document.getElementById("handleAlertForm").reset()
+}
+
+window.submitBinStatusUpdate = () => {
+  const binId = document.getElementById("updateBinId").value
+  const newStatus = document.getElementById("updateNewStatus").value
+  const actionType = document.getElementById("updateActionType").value
+  const notes = document.getElementById("updateStatusNotes").value
+
+  if (!newStatus || !actionType) {
+    alert("Please fill in all required fields")
+    return
+  }
+
+  // Update bin status
+  const bin = assignedBins.find((b) => b.id === binId)
+  if (bin) {
+    bin.status = newStatus
+    bin.lastEmptied = "Just now"
+  }
+
+  // Close modal
+  const modal = bootstrap.Modal.getInstance(document.getElementById("updateBinStatusModal"))
+  modal.hide()
+
+  // Reload data
+  loadAssignedBins()
+  loadDashboardData()
+
+  alert("Bin status updated successfully!")
+  document.getElementById("updateBinStatusForm").reset()
 }
 
 function markAllAlertsRead() {
@@ -1054,49 +1095,6 @@ function updateNotificationCount() {
   }
 }
 
-// ... existing code up to initializeSidebar function ...
-
-function initializeSidebar() {
-  const sidebarItems = document.querySelectorAll(".sidebar-item")
-  console.log("[v0] Initializing sidebar with", sidebarItems.length, "items")
-
-  sidebarItems.forEach((item) => {
-    item.addEventListener("click", function (e) {
-      e.preventDefault()
-
-      sidebarItems.forEach((i) => i.classList.remove("active"))
-      this.classList.add("active")
-
-      const section = this.getAttribute("data-section")
-      console.log("[v0] Sidebar clicked - showing section:", section)
-
-      const sectionId = section.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
-      const sectionElement = document.getElementById(`${sectionId}Section`)
-
-      document.querySelectorAll(".content-section").forEach((s) => {
-        s.style.display = "none"
-      })
-
-      if (sectionElement) {
-        sectionElement.style.display = "block"
-        console.log("[v0] Section displayed:", section)
-
-        if (section === "assigned-bins") {
-          window.loadAssignedBins() // Assuming loadAssignedBins is a global function
-        } else if (section === "task-history") {
-          window.loadTaskHistory() // Assuming loadTaskHistory is a global function
-        } else if (section === "alerts") {
-          window.loadAlerts() // Assuming loadAlerts is a global function
-        }
-      } else {
-        console.error("[v0] Section element not found:", `${sectionId}Section`)
-      }
-    })
-  })
-
-  initializeProfileTabs()
-}
-
 function initializeProfileTabs() {
   const profileMenuItems = document.querySelectorAll(".profile-menu-item")
 
@@ -1130,4 +1128,3 @@ function initializeProfileTabs() {
     })
   })
 }
-
